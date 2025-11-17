@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Notas (2.0 - 7.0)</title>
+    <style>
+        :root {
+            --color-fondo: #f4f7f6;
+            --color-tarjeta: #ffffff;
+            --color-primario: #005a9c;
+            --color-texto: #333;
+            --color-borde: #ddd;
+            --color-exito: #28a745;
+            --color-error: #dc3545;
+            --sombra: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                Helvetica, Arial, sans-serif;
+            background-color: var(--color-fondo);
+            color: var(--color-texto);
+            display: grid;
+            place-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .calculadora {
+            background-color: var(--color-tarjeta);
+            border-radius: 12px;
+            box-shadow: var(--sombra);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 450px;
+        }
+        h1 {
+            text-align: center;
+            color: var(--color-primario);
+            margin-top: 0;
+            margin-bottom: 2rem;
+            font-size: 1.75rem;
+        }
+        .form-grupo {
+            margin-bottom: 1.5rem;
+        }
+        .form-grupo label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        .form-grupo input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--color-borde);
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        .form-grupo input:focus {
+            outline: none;
+            border-color: var(--color-primario);
+            box-shadow: 0 0 0 3px rgba(0, 90, 156, 0.15);
+        }
+        button {
+            width: 100%;
+            padding: 1rem;
+            background-color: var(--color-primario);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        button:hover {
+            background-color: #004a80;
+        }
+        .resultado {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 800;
+            padding: 1.5rem;
+            border-radius: 8px;
+            display: none;
+        }
+        .resultado.aprobado {
+            color: var(--color-exito);
+            background-color: #eaf6ec;
+            display: block;
+        }
+        .resultado.reprobado {
+            color: var(--color-error);
+            background-color: #fdebee;
+            display: block;
+        }
+        .resultado.error {
+            color: var(--color-error);
+            background-color: #fdebee;
+            font-size: 1rem;
+            font-weight: 600;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="calculadora">
+        <h1>Calculadora de Notas</h1>
+        <form id="form-calculo">
+            
+            <div class="form-grupo">
+                <label for="p_obt">Puntaje Obtenido</label>
+                <input type="number" id="p_obt" step="any" placeholder="Ej. 17.5" required>
+            </div>
+
+            <div class="form-grupo">
+                <label for="p_max">Puntaje Máximo</label>
+                <input type="number" id="p_max" step="any" placeholder="Ej. 25.0" required>
+            </div>
+
+            <div class="form-grupo">
+                <label for="exig">Exigencia (%)</label>
+                <input type="number" id="exig" value="60" min="1" max="100" step="1" required>
+            </div>
+
+            <button type="submit">Calcular Nota</button>
+        </form>
+
+        <div id="resultado" class="resultado">
+            </div>
+    </div>
+
+    <script>
+        document.getElementById('form-calculo').addEventListener('submit', function(event) {
+            event.preventDefault(); 
+            calcularNota();
+        });
+
+        function calcularNota() {
+            // --- 1. Obtener Entradas ---
+            const P_obt_val = document.getElementById('p_obt').value;
+            const P_max_val = document.getElementById('p_max').value;
+            const Exig_val = document.getElementById('exig').value;
+            
+            // El incremento de redondeo está fijo a 0.1 (a la décima)
+            const Inc = 0.1; 
+            
+            const resultadoEl = document.getElementById('resultado');
+
+            const P_obt = parseFloat(P_obt_val);
+            const P_max = parseFloat(P_max_val);
+            const Exig = parseFloat(Exig_val);
+
+            // --- 2. Validación de Entradas ---
+            if (isNaN(P_obt) || isNaN(P_max) || isNaN(Exig)) {
+                mostrarResultado("Error: Todos los campos deben ser números.", 'error');
+                return;
+            }
+            if (P_max <= 0) {
+                mostrarResultado("Error: El puntaje máximo debe ser mayor a 0.", 'error');
+                return;
+            }
+            if (Exig < 1 || Exig > 100) {
+                mostrarResultado("Error: La exigencia debe estar entre 1% y 100%.", 'error');
+                return;
+            }
+
+            // --- 3. Ajuste y Casos Ancla (Extremos) ---
+            const P_obt_ajustado = Math.max(0, Math.min(P_obt, P_max));
+
+            if (P_obt_ajustado === 0) {
+                mostrarResultado(2.0);
+                return;
+            }
+            if (P_obt_ajustado === P_max) {
+                mostrarResultado(7.0);
+                return;
+            }
+
+            // --- 4. Definir Punto de Aprobación ---
+            const P_exig = P_max * (Exig / 100);
+
+            // --- 5. Cálculo de Nota Bruta (Lineal por Tramos) ---
+            let notaBruta;
+
+            if (P_obt_ajustado < P_exig) {
+                // TRAMO 1: Reprobación (Notas 2.0 a 4.0)
+                if (P_exig === 0) { 
+                    notaBruta = 4.0;
+                } else {
+                    const rangoNotaRep = 4.0 - 2.0; // = 2.0
+                    notaBruta = 2.0 + (P_obt_ajustado / P_exig) * rangoNotaRep;
+                }
+            } else {
+                // TRAMO 2: Aprobación (Notas 4.0 a 7.0)
+                const rangoPuntajeApr = P_max - P_exig;
+                const rangoNotaApr = 7.0 - 4.0; // = 3.0
+                const puntajeEnTramo = P_obt_ajustado - P_exig;
+
+                if (rangoPuntajeApr === 0) {
+                    notaBruta = 7.0;
+                } else {
+                    notaBruta = 4.0 + (puntajeEnTramo / rangoPuntajeApr) * rangoNotaApr;
+                }
+            }
+
+            // --- 6. Redondeo a la décima (0.1) ---
+            let notaRedondeada = Math.round(notaBruta * 10) / 10;
+
+            // --- 7. Validación Final (Post-Redondeo) ---
+            if (notaRedondeada < 2.0) {
+                notaRedondeada = 2.0;
+            }
+            if (notaRedondeada > 7.0) {
+                notaRedondeada = 7.0;
+            }
+            
+            // --- 8. Mostrar Resultado ---
+            mostrarResultado(notaRedondeada);
+        }
+
+        function mostrarResultado(valor, tipo = 'nota') {
+            const resultadoEl = document.getElementById('resultado');
+            
+            if (tipo === 'error') {
+                resultadoEl.textContent = valor;
+                resultadoEl.className = 'resultado error';
+            } else {
+                const nota = parseFloat(valor);
+                resultadoEl.textContent = `Nota: ${nota.toFixed(1)}`;
+                
+                if (nota < 4.0) {
+                    resultadoEl.className = 'resultado reprobado';
+                } else {
+                    resultadoEl.className = 'resultado aprobado';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
